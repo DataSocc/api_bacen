@@ -2,34 +2,28 @@ import json
 import calendar
 from datetime import datetime
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import requests
 
-
-URL = "https://bcb.gov.br"
-
 ARQUIVO = Path("dados.jsonl")
+
+URL = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados"
 
 
 def executar():
-    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+
+    hoje = datetime.now()
 
     ultimo_dia = calendar.monthrange(
-        agora.year,
-        agora.month
+        hoje.year,
+        hoje.month
     )[1]
-
-    data_final = f"{ultimo_dia:02d}/{agora.month:02d}/{agora.year}"
 
     params = {
         "formato": "json",
         "dataInicial": "01/08/2026",
-        "dataFinal": data_final
+        "dataFinal": f"{ultimo_dia:02d}/{hoje.month:02d}/{hoje.year}"
     }
-
-    print("Chamando API com:")
-    print(params)
 
     response = requests.get(
         URL,
@@ -39,25 +33,19 @@ def executar():
 
     response.raise_for_status()
 
-    try:
-        retorno = response.json()
-    except ValueError:
-        retorno = response.text
-
     registro = {
-        "data_hora": agora.isoformat(),
-        "dataInicial": params["dataInicial"],
-        "dataFinal": params["dataFinal"],
+        "executado_em": hoje.isoformat(),
+        "url": response.url,
         "status": response.status_code,
-        "retorno": retorno
+        "retorno": response.json()
     }
 
-    with ARQUIVO.open("a", encoding="utf-8") as arquivo:
-        arquivo.write(
-            json.dumps(registro, ensure_ascii=False) + "\n"
-        )
+    with open(ARQUIVO, "a", encoding="utf-8") as f:
+        f.write(json.dumps(registro, ensure_ascii=False))
+        f.write("\n")
 
-    print("Coleta realizada com sucesso.")
+    print("Sucesso!")
+    print(response.url)
 
 
 if __name__ == "__main__":
